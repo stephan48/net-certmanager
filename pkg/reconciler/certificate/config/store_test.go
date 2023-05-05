@@ -43,9 +43,9 @@ func TestStoreImmutableConfig(t *testing.T) {
 	store.OnConfigChanged(configmaptesting.ConfigMapFromTestFile(t, CertManagerConfigName))
 	config := store.Load()
 
-	config.CertManager.IssuerRef.Kind = "newKind"
+	config.CertManager.DefaultIssuerRef.Kind = "newKind"
 	newConfig := store.Load()
-	if newConfig.CertManager.IssuerRef.Kind == "newKind" {
+	if newConfig.CertManager.DefaultIssuerRef.Kind == "newKind" {
 		t.Error("CertManager config is not immutable")
 	}
 }

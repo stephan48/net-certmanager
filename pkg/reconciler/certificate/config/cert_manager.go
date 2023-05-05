@@ -17,14 +17,15 @@ limitations under the License.
 package config
 
 import (
-	"github.com/ghodss/yaml"
-
 	cmeta "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
+	"github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
-	issuerRefKey = "issuerRef"
+	defaultIssuerRefKey = "issuerRef"
+
+	domainIssuerRefKey = "domainIssuerRef"
 
 	// CertManagerConfigName is the name of the configmap containing all
 	// configuration related to Cert-Manager.
@@ -34,7 +35,8 @@ const (
 // CertManagerConfig contains Cert-Manager related configuration defined in the
 // `config-certmanager` config map.
 type CertManagerConfig struct {
-	IssuerRef *cmeta.ObjectReference
+	DefaultIssuerRef *cmeta.ObjectReference
+	DomainIssuerRef  map[string]*cmeta.ObjectReference
 }
 
 // NewCertManagerConfigFromConfigMap creates an CertManagerConfig from the supplied ConfigMap
@@ -43,11 +45,18 @@ func NewCertManagerConfigFromConfigMap(configMap *corev1.ConfigMap) (*CertManage
 	// TODO: validation check.
 
 	config := &CertManagerConfig{
-		IssuerRef: &cmeta.ObjectReference{},
+		DefaultIssuerRef: &cmeta.ObjectReference{},
 	}
 
-	if v, ok := configMap.Data[issuerRefKey]; ok {
-		if err := yaml.Unmarshal([]byte(v), config.IssuerRef); err != nil {
+	if v, ok := configMap.Data[defaultIssuerRefKey]; ok {
+		if err := yaml.Unmarshal([]byte(v), config.DefaultIssuerRef); err != nil {
+			return nil, err
+		}
+	}
+
+	//TODO: stephan48: figure out how the heck this block technically(language spec) works
+	if v, ok := configMap.Data[domainIssuerRefKey]; ok {
+		if err := yaml.Unmarshal([]byte(v), config.DomainIssuerRef); err != nil {
 			return nil, err
 		}
 	}

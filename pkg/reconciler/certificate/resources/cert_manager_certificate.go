@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+	cmeta "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	"strings"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -135,6 +136,50 @@ func MakeCertManagerCertificate(cmConfig *config.CertManagerConfig, knCert *v1al
 
 	dnsNames = append(dnsNames, knCert.Spec.DNSNames...)
 
+	var issuerRef *cmeta.ObjectReference = nil
+
+	// as per: https://stackoverflow.com/a/46885542
+
+	for _, dnsName := range dnsNames {
+		for suffix, domainIssuerRef := range cmConfig.DomainIssuerRef {
+			if strings.HasSuffix(dnsName, suffix) {
+				if issuerRef != nil && domainIssuerRef != issuerRef {
+					return nil, &apis.Condition{
+						Type:   apis.ConditionType(CreateCertManagerCertificateCondition),
+						Status: corev1.ConditionFalse,
+						Reason: "Multiple issuers match",
+						Message: fmt.Sprintf(
+							"error creating Certmanager Certificate: multiple different issuers match the dnsNames, due to real world limitations a cert may only have dnsnames matching one issuer",
+						),
+					}
+				}
+
+				issuerRef = domainIssuerRef
+			}
+		}
+	}
+
+	for suffix, domainIssuerRef := range cmConfig.DomainIssuerRef {
+		if strings.HasSuffix(commonName, suffix) {
+			if issuerRef != nil && domainIssuerRef != issuerRef {
+				return nil, &apis.Condition{
+					Type:   apis.ConditionType(CreateCertManagerCertificateCondition),
+					Status: corev1.ConditionFalse,
+					Reason: "Multiple issuers match",
+					Message: fmt.Sprintf(
+						"error creating Certmanager Certificate: multiple different issuers match the dnsNames+commonName, due to real world limitations a cert may only have dnsnames+commonName matching one issuer",
+					),
+				}
+			}
+
+			issuerRef = domainIssuerRef
+		}
+	}
+
+	if issuerRef == nil {
+		issuerRef = cmConfig.DefaultIssuerRef
+	}
+
 	cert := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            knCert.Name,
@@ -147,7 +192,7 @@ func MakeCertManagerCertificate(cmConfig *config.CertManagerConfig, knCert *v1al
 			CommonName: commonName,
 			SecretName: knCert.Spec.SecretName,
 			DNSNames:   dnsNames,
-			IssuerRef:  *cmConfig.IssuerRef,
+			IssuerRef:  *issuerRef,
 			SecretTemplate: &cmv1.CertificateSecretTemplate{
 				Labels: map[string]string{
 					networking.CertificateUIDLabelKey: string(knCert.GetUID()),

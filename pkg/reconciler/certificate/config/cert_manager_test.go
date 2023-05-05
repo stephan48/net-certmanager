@@ -56,14 +56,14 @@ func TestIssuerRef(t *testing.T) {
 				Name:      CertManagerConfigName,
 			},
 			Data: map[string]string{
-				issuerRefKey: "wrong format",
+				defaultIssuerRefKey: "wrong format",
 			},
 		},
 	}, {
 		name:    "valid IssuerRef",
 		wantErr: false,
 		wantConfig: &CertManagerConfig{
-			IssuerRef: &cmmeta.ObjectReference{
+			DefaultIssuerRef: &cmmeta.ObjectReference{
 				Name: "letsencrypt-issuer",
 				Kind: "ClusterIssuer",
 			},
@@ -74,7 +74,7 @@ func TestIssuerRef(t *testing.T) {
 				Name:      CertManagerConfigName,
 			},
 			Data: map[string]string{
-				issuerRefKey: "kind: ClusterIssuer\nname: letsencrypt-issuer",
+				defaultIssuerRefKey: "kind: ClusterIssuer\nname: letsencrypt-issuer",
 			},
 		},
 	}}
